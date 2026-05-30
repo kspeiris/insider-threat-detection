@@ -8,7 +8,7 @@ import asyncio
 from .database import get_db, init_db
 from .models import User, Alert
 from .schemas import *
-from .routes import auth, users, alerts, risk, dashboard
+from .routes import auth, users, alerts, risk, dashboard, logs
 
 app = FastAPI(title="Insider Threat Detection System", version="1.0.0")
 
@@ -48,7 +48,8 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["alerts"])
 app.include_router(risk.router, prefix="/api/risk", tags=["risk"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
-# app.include_router(users.router, prefix="/api/users", tags=["users"]) # Assuming you create users.py later
+app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(logs.router, prefix="/api/logs", tags=["logs"])
 
 @app.on_event("startup")
 async def startup_event():

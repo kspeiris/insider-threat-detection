@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 from typing import Optional
 
@@ -71,7 +71,7 @@ async def read_users_me(token: str = Depends(oauth2_scheme), db: Session = Depen
         username = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
-    except jwt.JWTError:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
     
     user = db.query(User).filter(User.username == username).first()
