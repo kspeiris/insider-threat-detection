@@ -4,7 +4,7 @@ from sqlalchemy import func
 from datetime import datetime, timedelta
 
 from ..database import get_db
-from ..models import User, Alert, RiskScore
+from ..models import User, Alert, RiskScore, LoginLog, FileLog
 from ..schemas import DashboardStats
 
 router = APIRouter()
@@ -93,3 +93,44 @@ def get_top_risky_users(limit: int = 10, db: Session = Depends(get_db)):
         })
     
     return result
+
+@router.get("/alerts-distribution")
+def get_alerts_distribution(days: int = 30, db: Session = Depends(get_db)):
+    """Get alert counts grouped by severity"""
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    results = db.query(
+        Alert.severity, func.count(Alert.id)
+    ).filter(Alert.timestamp >= cutoff).group_by(Alert.severity).all()
+    
+    distribution = [{"name": r[0], "value": r[1]} for r in results]
+    # Ensure all severities are represented even if 0
+    severities = ['Critical', 'High', 'Medium', 'Low']
+    found = {d['name'] for d in distribution}
+    for s in severities:
+        if s not in found:
+            distribution.append({"name": s, "value": 0})
+            
+    # Sort by severity severity
+    order = {'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3}
+    return sorted(distribution, key=lambda x: order.get(x['name'], 99))
+
+@router.get("/hourly-activity")
+def get_hourly_activity(days: int = 7, db: Session = Depends(get_db)):
+    """Get system activity aggregated by hour of day"""
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    
+    hourly_counts = [{"hour": f"{h:02d}:00", "logins": 0, "file_access": 0, "other": 0} for h in range(24)]
+    
+    logins = db.query(LoginLog.login_time).filter(LoginLog.login_time >= cutoff).all()
+    for log in logins:
+        if log.login_time:
+            hour = log.login_time.hour
+            hourly_counts[hour]['logins'] += 1
+            
+    files = db.query(FileLog.timestamp).filter(FileLog.timestamp >= cutoff).all()
+    for log in files:
+        if log.timestamp:
+            hour = log.timestamp.hour
+            hourly_counts[hour]['file_access'] += 1
+            
+    return hourly_counts

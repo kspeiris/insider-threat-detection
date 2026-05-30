@@ -6,6 +6,7 @@ from ..database import get_db
 from ..models import User, RiskScore
 from ..schemas import UserResponse
 from ..services.risk_engine import RiskEngine
+from ..services.feature_extractor import FeatureExtractor
 
 router = APIRouter()
 
@@ -45,6 +46,26 @@ def get_user_risk_history(user_id: int, days: int = 30, db: Session = Depends(ge
         "risk_level": s.risk_level,
         "timestamp": s.timestamp.isoformat()
     } for s in scores]
+
+@router.get("/{user_id}/features")
+def get_user_features(user_id: int, days: int = 30, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    extractor = FeatureExtractor(db)
+    features = extractor.extract_features(user_id, days=days)
+    
+    # Format for Radar Chart
+    # Values are normalized relative to arbitrary baselines for display purposes
+    return [
+        {"subject": "Total Logins", "A": min(100, features.get('total_logins', 0) * 2), "fullMark": 100},
+        {"subject": "Failed Logins", "A": min(100, features.get('failed_logins', 0) * 10), "fullMark": 100},
+        {"subject": "Late Night Logins", "A": min(100, features.get('late_night_logins', 0) * 20), "fullMark": 100},
+        {"subject": "File Accesses", "A": min(100, features.get('total_file_accesses', 0) / 10), "fullMark": 100},
+        {"subject": "USB Connections", "A": min(100, features.get('usb_connections', 0) * 15), "fullMark": 100},
+        {"subject": "Data Transferred", "A": min(100, features.get('data_transferred_gb', 0) * 5), "fullMark": 100}
+    ]
 
 @router.post("/{user_id}/evaluate")
 def evaluate_user(user_id: int, db: Session = Depends(get_db)):
