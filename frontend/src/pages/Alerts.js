@@ -1,172 +1,103 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Paper, Typography, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, Chip, Button, Box, FormControl, InputLabel,
-  Select, MenuItem, IconButton, Tooltip
-} from '@mui/material';
-import { CheckCircle, Visibility, Done } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../services/api';
+import { ShieldAlert, CheckCircle, Clock } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000/api';
-
-function Alerts() {
+const Alerts = () => {
   const [alerts, setAlerts] = useState([]);
-  const [filter, setFilter] = useState('all');
-  const [loading, setLoading] = useState(false);
-
-  const token = localStorage.getItem('token');
 
   useEffect(() => {
     fetchAlerts();
-    const interval = setInterval(fetchAlerts, 10000);
-    return () => clearInterval(interval);
-  }, [filter]);
+  }, []);
 
   const fetchAlerts = async () => {
     try {
-      let url = `${API_URL}/alerts/`;
-      if (filter !== 'all') {
-        url += `?status=${filter}`;
-      }
-      const response = await axios.get(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/alerts?status=new');
       setAlerts(response.data);
     } catch (error) {
       console.error('Error fetching alerts:', error);
     }
   };
 
-  const resolveAlert = async (alertId) => {
+  const handleResolve = async (id) => {
     try {
-      await axios.put(`${API_URL}/alerts/${alertId}/resolve`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/alerts/${id}/resolve`);
       fetchAlerts();
     } catch (error) {
       console.error('Error resolving alert:', error);
     }
   };
 
-  const investigateAlert = async (alertId) => {
-    try {
-      await axios.put(`${API_URL}/alerts/${alertId}/investigate`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchAlerts();
-    } catch (error) {
-      console.error('Error investigating alert:', error);
-    }
-  };
-
-  const getSeverityColor = (severity) => {
-    switch (severity) {
-      case 'Critical': return 'error';
-      case 'High': return 'warning';
-      case 'Medium': return 'info';
-      default: return 'success';
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'new': return 'error';
-      case 'investigating': return 'warning';
-      case 'resolved': return 'success';
-      default: return 'default';
-    }
-  };
-
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Alert Management
-      </Typography>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <ShieldAlert className="text-danger" size={28} /> Active Alerts
+        </h1>
+      </div>
 
-      <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Filter by Status</InputLabel>
-          <Select
-            value={filter}
-            label="Filter by Status"
-            onChange={(e) => setFilter(e.target.value)}
-          >
-            <MenuItem value="all">All Alerts</MenuItem>
-            <MenuItem value="new">New</MenuItem>
-            <MenuItem value="investigating">Investigating</MenuItem>
-            <MenuItem value="resolved">Resolved</MenuItem>
-          </Select>
-        </FormControl>
-        <Button variant="outlined" onClick={fetchAlerts}>Refresh</Button>
-      </Box>
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Severity</TableCell>
-              <TableCell>User ID</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Time</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {alerts.map((alert) => (
-              <TableRow key={alert.id} hover>
-                <TableCell>
-                  <Chip
-                    label={alert.severity}
-                    color={getSeverityColor(alert.severity)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{alert.user_id}</TableCell>
-                <TableCell>{alert.alert_type}</TableCell>
-                <TableCell>{alert.description}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={alert.status}
-                    color={getStatusColor(alert.status)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{new Date(alert.timestamp).toLocaleString()}</TableCell>
-                <TableCell>
-                  <Tooltip title="Investigate">
-                    <IconButton
-                      size="small"
-                      onClick={() => investigateAlert(alert.id)}
-                      disabled={alert.status !== 'new'}
+      <div className="glass-panel overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-dark-800/50 text-slate-400 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="px-6 py-4 font-medium">Time</th>
+                <th className="px-6 py-4 font-medium">User ID</th>
+                <th className="px-6 py-4 font-medium">Severity</th>
+                <th className="px-6 py-4 font-medium">Description</th>
+                <th className="px-6 py-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700/50">
+              {alerts.map((alert) => (
+                <tr key={alert.id} className="hover:bg-dark-700/30 transition-colors">
+                  <td className="px-6 py-4 text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-slate-500" />
+                      {new Date(alert.timestamp).toLocaleString()}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-white font-medium">
+                    {alert.user_id}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 text-xs font-semibold rounded-full border inline-block
+                      ${alert.severity === 'Critical' ? 'bg-danger/10 text-danger border-danger/20' : 
+                        alert.severity === 'High' ? 'bg-warning/10 text-warning border-warning/20' : 
+                        alert.severity === 'Medium' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 
+                        'bg-success/10 text-success border-success/20'}`}>
+                      {alert.severity}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-slate-300 max-w-md truncate">
+                    {alert.description}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button 
+                      onClick={() => handleResolve(alert.id)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-success/10 text-success hover:bg-success hover:text-white border border-success/20 rounded-lg text-sm font-medium transition-all"
                     >
-                      <Visibility />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Resolve">
-                    <IconButton
-                      size="small"
-                      onClick={() => resolveAlert(alert.id)}
-                      disabled={alert.status === 'resolved'}
-                    >
-                      <Done />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {alerts.length === 0 && (
-        <Paper sx={{ p: 4, textAlign: 'center', mt: 2 }}>
-          <Typography color="textSecondary">No alerts found</Typography>
-        </Paper>
-      )}
-    </Box>
+                      <CheckCircle size={16} /> Resolve
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {alerts.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <CheckCircle size={48} className="text-success mb-4 opacity-50" />
+                      <p className="text-lg">No active alerts</p>
+                      <p className="text-sm">Your network is secure</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
-}
+};
 
 export default Alerts;
