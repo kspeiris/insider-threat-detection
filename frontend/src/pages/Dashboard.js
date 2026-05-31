@@ -384,10 +384,14 @@ const Dashboard = () => {
           <div className="p-6 border-b border-slate-700/50 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-white">Top Risky Users</h2>
             <button
-              onClick={() => navigate('/users')}
+              onClick={() => {
+                const firstUser = riskyUsers[0];
+                if (firstUser) navigate(`/users/${firstUser.user_id}`);
+              }}
+              disabled={riskyUsers.length === 0}
               className="text-sm text-primary-500 hover:text-primary-400 flex items-center gap-1 transition-colors"
             >
-              View all <ArrowRight size={16} />
+              View top <ArrowRight size={16} />
             </button>
           </div>
           <div className="flex-1 overflow-auto">
