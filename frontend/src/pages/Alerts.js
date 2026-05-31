@@ -20,7 +20,7 @@ const Alerts = () => {
 
   const handleResolve = async (id) => {
     try {
-      await api.post(`/alerts/${id}/resolve`);
+      await api.put(`/alerts/${id}/resolve`);
       fetchAlerts();
     } catch (error) {
       console.error('Error resolving alert:', error);
