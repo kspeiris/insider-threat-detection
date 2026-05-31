@@ -588,6 +588,3 @@ ThreatOps is designed for:
 
 ---
 
-## 📜 License
-
-This project is currently provided for academic and demonstration use. Add your preferred license file before public distribution.
